@@ -7,7 +7,7 @@ import time, uuid
 from orm import Model, StringField, BooleanField, FloatField, TextField
 
 def next_id():
-	return '%015%s000' % (int(time.time() * 1000), uuid.uuid4().hex)
+	return '%015d%s000' % (int(time.time() * 1000), uuid.uuid4().hex)
 
 class User(Model):
 	__table__ = 'users'
@@ -18,7 +18,7 @@ class User(Model):
 	admin = BooleanField()
 	name = StringField(ddl='varchar(50)')
 	image = StringField(ddl='varchar(500)')
-	create_at = FloatField(default=time.time)
+	created_at = FloatField(default=time.time)
 
 class Blog(Model):
 	__table__ = 'blogs'
@@ -29,7 +29,7 @@ class Blog(Model):
 	name = StringField(ddl='varchar(50)')
 	summary = StringField(ddl='varchar(200)')
 	content = TextField()
-	create_at = FloatField(default=time.time)
+	created_at = FloatField(default=time.time)
 	
 	
 class Comment(Model):
@@ -41,4 +41,4 @@ class Comment(Model):
 	user_name = StringField(ddl='varchar(50)')
 	user_image = StringField(ddl='varchar500）')
 	content = TextField()
-	create_at = FloatField(default=time.time)
+	created_at = FloatField(default=time.time)

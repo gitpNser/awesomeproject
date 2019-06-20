@@ -14,18 +14,18 @@ async def create_pool(loop, **kw):
 		user=kw['user'],	# 数据库用户名
 		password=kw['password'],	# 数据库用户密码
 		db=kw['db'],				# 数据库名称 
-		charset=kw.get('charset', 'utf-8'),	# 数据库Coding方式
+		charset=kw.get('charset', 'utf8mb4'),	# 数据库Coding方式
 		autocommit=kw.get('autocommit', True),	# 自动提交？190530
 		maxsize=kw.get('maxsize', 10),	# 最大连接数 ？190530
 		minsize=kw.get('minsize', 1),	# 最小连接数 ？190530
-		loop=loop)
+		loop=loop
 	)
 
 async def select(sql, args, size=None):	# 创建Select函数
 	log(sql, args)
 	global __pool
 	async with __pool.get() as conn:	#链接数据库
-		async wth conn.cursor(aiomysql.DictCursor) as cur:
+		async with conn.cursor(aiomysql.DictCursor) as cur:
 			await cur.execute(sql.replace('?', '%s'), args or ())	#MYSQL 命令行参数？ 和 %s 自由切换
 			if size:	#如果函数调用时带入size参数就获取指定数量记录
 				rs = await cur.fetchmany(size)
@@ -35,7 +35,7 @@ async def select(sql, args, size=None):	# 创建Select函数
 		return rs
 		
 async def execute(sql, args, autocommit=True):	# 定义一个执行参数，可以执行Insert, Update和Delete语句
-	log(sql, args)						# 自己添加了args参数 190530
+	log(sql)						# 自己添加了args参数 190530, 删除args参数190618
 	async with __pool.get() as conn:	#  链接数据库
 		if not autocommit:
 			await conn.begin()
@@ -70,7 +70,7 @@ class Field(object):		# 定义一个“列”对象 ？ 由名称、列类型，
 
 class StringField(Field):	# 定义String类型 列
 
-	def __init__(self, name=None, primary_key=False, default=None, ddl=varchar(100)'):
+	def __init__(self, name=None, primary_key=False, default=None, ddl='varchar(100)'):
 		super().__init__(name, ddl, primary_key, default)
 		
 class BooleanField(Field):	# 定义布尔类型 列
@@ -102,7 +102,7 @@ class ModelMetaclass(type):
 		logging.info('found model: %s (table: %s)' % (name, tableName))
 		mappings = dict()
 		fields = []
-		primary_key = None
+		primaryKey = None
 		for k, v in attrs.items():
 			if isinstance(v, Field):
 				logging.info('  found mapping: %s ==> %s' % (k, v))
@@ -110,37 +110,38 @@ class ModelMetaclass(type):
 				if v.primary_key:
 					if primaryKey:
 						raise StandardError('Duplicate primary key for field: %s' % k)
-				primaryKey = k
-			else:
-				fields.append(k)
+					primaryKey = k
+				else:
+					fields.append(k)
 		if not primaryKey:
-			raise StandardError('Primary key ot found.')
+			raise StandardError('Primary key not found.')
 		for k in mappings.keys():
 			attrs.pop(k)
-	escaped_fields = list(map(lambda f: '`%s`' %f, fields))
-	attrs['__mappings__'] = mappings	#  保存属性和列的映射关系
-	attrs['__table__'] = tableName
-	attrs['__primary_key__'] = primaryKey	# 主键属性名
-	attrs['__fields__'] = fields	# 除主键外的属性名
-	attrs['__select__'] = 'select `%s`, %s from `%s`' % (primaryKey, ', '.join(escaped_fields), tableName)
-	attrs['__insert__'] = 'insert into `%s` (%s, `%s`) values (%s)' % (tableName, ', '.join(escaped_fields), primaryKey, create_args_string(len(escaped_fields) + 1))
-	attrs['__update__'] = 'update `%s` set %s where `%s`=?' % (tableName, ', '.join(map(lambda f: '`%s`=?' % (mappings.get(f).name or f), fields)), primaryKey)
-	attrs['__delete__'] = 'delete from `%s` where `%s`=?' % (tableName, primaryKey)
-	return type.__new__(cls, name, bases, attrs)
+		escaped_fields = list(map(lambda f: '`%s`' % f, fields))
+		attrs['__mappings__'] = mappings	#  保存属性和列的映射关系
+		attrs['__table__'] = tableName
+		attrs['__primary_key__'] = primaryKey	# 主键属性名
+		attrs['__fields__'] = fields	# 除主键外的属性名
+		attrs['__select__'] = 'select `%s`, %s from `%s`' % (primaryKey, ', '.join(escaped_fields), tableName)
+		attrs['__insert__'] = 'insert into `%s` (%s, `%s`) values (%s)' % (tableName, ', '.join(escaped_fields), primaryKey, create_args_string(len(escaped_fields) + 1))
+		attrs['__update__'] = 'update `%s` set %s where `%s`=?' % (tableName, ', '.join(map(lambda f: '`%s`=?' % (mappings.get(f).name or f), fields)), primaryKey)
+		#	attrs['__update__'] = 'update `%s` set %s where `%s`=?' % (tableName, ', '.join(map(lambda f: '`%s`=?' % (mappings.get(f).name or f), fields)), primaryKey)
+		attrs['__delete__'] = 'delete from `%s` where `%s`=?' % (tableName, primaryKey)
+		return type.__new__(cls, name, bases, attrs)
 	
- class Model(dict, metaclass=ModelMetaclass):
+class Model(dict, metaclass=ModelMetaclass):
  
 	def __init__(self, **kw):
 		super(Model, self).__init__(**kw)
 		
 	def __getattr__(self, key):
 		try:
-			return self(key)
+			return self[key]	# [] 错用成（），190618修正
 		except KeyError:
-			raise AttributeError(r"'Model' object has no attribut '%s'" % key)
+			raise AttributeError(r"'Model' object has no attribute '%s'" % key)
 		
 	def __setattr__(self, key, value):
-		self(key) = value
+		self[key] = value
 	
 	def getValue(self, key):
 		return getattr(self, key, None)
@@ -156,7 +157,7 @@ class ModelMetaclass(type):
 		return value
 		
 	@classmethod
-	asyc def findAll(cls, where=None, args=None, **kw):		# find objects by where clause:
+	async def findAll(cls, where=None, args=None, **kw):		# find objects by where clause:
 		sql = [cls.__select__]
 		if where:
 			sql.append('where')
@@ -182,10 +183,10 @@ class ModelMetaclass(type):
 		return [cls(**r) for r in rs]	# 输出查询结果， 结果是个dict? 190530
 		
 	@classmethod
-	async def findNumber(cls, selectField, where=None, args=None):		# fnd number by select and where
+	async def findNumber(cls, selectField, where=None, args=None):		# find number by select and where
 		sql = ['select %s _num_ from `%s`' % (selectField, cls.__table__)]
 		if where:
-			sql.append('where']
+			sql.append('where')
 			sql.append(where)
 		rs = await select(' '.join(sql), args, 1)
 		if len(rs) == 0:
@@ -200,8 +201,8 @@ class ModelMetaclass(type):
 		return cls(**rs[0])
 		
 	async def save(self):
-		args = list(map(self.getValue, self.__fields__))
-		args.append(self.getValue(self.__primary_key__))
+		args = list(map(self.getValueOrDefault, self.__fields__))
+		args.append(self.getValueOrDefault(self.__primary_key__))
 		rows = await execute(self.__insert__, args)
 		if rows != 1:
 			logging.warn('fail to insert record: affected rows: %s' % rows)
