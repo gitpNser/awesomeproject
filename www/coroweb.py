@@ -5,7 +5,7 @@ __author__ = 'copy Michael Liao'
 
 import asyncio, os, inspect, logging, functools
 
-from url import parse
+from urllib import parse
 
 from aiohttp import web
 
@@ -84,7 +84,7 @@ class RequestHandler(object):
 		self._func = fn
 		self._has_request_arg = has_request_arg(fn)
 		self._has_var_kw_arg = has_var_kw_arg(fn)
-		slef._has_named_kw_args = has_named_kw_args(fn)
+		self._has_named_kw_args = has_named_kw_args(fn)
 		self._named_kw_args = get_named_kw_args(fn)
 		self._required_kw_args = get_required_kw_args(fn)
 		
@@ -111,7 +111,7 @@ class RequestHandler(object):
 					kw = dict()
 					for k, v in parse.parse_qs(qs, True).items():
 						kw[k] = v[0]
-		if kw = None:
+		if kw is None:
 			kw = dict(**request.match_info)
 		else:
 			if not self._has_var_kw_arg and self._named_kw_args:
@@ -153,7 +153,7 @@ def add_route(app, fn):
 	if not asyncio.iscoroutinefunction(fn) and not inspect.isgeneratorfunction(fn):
 		fn = asyncio.coroutine(fn)
 	logging.info('add route %s %s => %s(%s)' % (method, path, fn.__name__, ', '.join(inspect.signature(fn).parameters.keys())))
-	app.router.add_route(mathod, path, RequestHandler(app, fn))
+	app.router.add_route(method, path, RequestHandler(app, fn))
 	
 def add_routes(app, module_name):
 	n = module_name.rfind('.')

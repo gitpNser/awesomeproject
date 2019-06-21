@@ -30,7 +30,7 @@ def init_jinja2(app, **kw):
 	)
 	path = kw.get('path', None)
 	if path is None:
-		path = os.path.join(os.dirname(os.path.abspath(__file__)), 'templates')
+		path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates')
 	logging.info('set jinja2 tmplates path: %s' % path)
 	env = Environment(loader=FileSystemLoader(path), **options)
 	filters = kw.get('filters', None)
@@ -41,7 +41,7 @@ def init_jinja2(app, **kw):
 
 async def logger_factory(app, handler):
 	async def logger(request):
-		logging,info('Request: %s %s' % (request.method, request.path))
+		logging.info('Request: %s %s' % (request.method, request.path))
 		# await asyncio.sleep(0.3)
 		return (await handler(request))
 	return logger
@@ -81,7 +81,7 @@ async def response_factory(app, handler):
 				resp.content_type = 'application/json;charset=utf-8'
 				return resp
 			else:
-				resp = web.Response(body=app['__templating__'].get_template(template).render(**r).encode('utf-8'))
+				resp = web.Response(body=app['__templates__'].get_template(template).render(**r).encode('utf-8'))
 				resp.content_type = 'text/html;charset=utf-8'
 				return resp
 		if isinstance(r, int) and r >= 100 and r < 600:
@@ -104,14 +104,14 @@ def datetime_filter(t):
 		return u'%s分钟前' % (delta // 60)
 	if delta < 86400:
 		return u'%s小时前' % (delta // 3600)
-	if delta 604800:
+	if delta < 604800:
 		return u'%s天前' % (delta // 86400)
 	dt = datetime.fromtimestamp(t)
 	return u'%s年%s月%s日'  % (dt.year, dt.month, dt.day)
 	
 async def init(loop):
 	await orm.create_pool(loop=loop, host='127.0.0.1', port=3306, user='www-data', password='www-data', db='awesome')
-	app = web.Application(loop=loop, middleware=[
+	app = web.Application(loop=loop, middlewares=[
 		logger_factory, response_factory
 	])
 	init_jinja2(app, filters=dict(datetime=datetime_filter))
