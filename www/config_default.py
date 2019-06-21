@@ -10,12 +10,12 @@ __author__ = 'Copy Michael Liao'
 configs = {
 	'debug': True,
 	'db': {
-		'host': '127.0.01,
+		'host': '127.0.01',
 		'port': 3306,
-		'user': 'www-data'
-		'password': 'www-data'
+		'user': 'www-data',
+		'password': 'www-data',
 		'db': 'awesome'
-	}
+	},
 	'session': {
 		'secret': 'Awesome'
 	}
